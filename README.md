@@ -1,0 +1,87 @@
+<img src="https://raw.githubusercontent.com/js-data/js-data/master/js-data.png" alt="js-data logo" title="js-data" align="right" width="96" height="96" />
+
+# js-data-sql
+
+[![Slack][1]][2]
+[![NPM][3]][4]
+[![Tests][5]][6]
+[![Downloads][7]][8]
+[![Coverage][9]][10]
+
+A Postgres/MySQL/MariaDB/SQLite3 adapter for the [JSData Node.js ORM][11].
+
+### Installation
+
+    npm install --save js-data js-data-sql
+
+And then you also need to install one of the following:
+
+* `pg`
+* `sqlite3`
+* `mysql`
+* `mysql2`
+* `mariasql`
+* `strong-oracle`
+* `oracle`
+* `mssql`
+
+### Usage
+
+```js
+import { SqlAdapter } from 'js-data-sql';
+
+// Create an instance of SqlAdapter
+const adapter = new SqlAdapter({
+  knexOpts: {
+    client: 'mysql'
+  }
+});
+
+// Other JSData setup hidden
+
+// Register the adapter instance
+store.registerAdapter('sql', adapter, { default: true });
+```
+
+### JSData + SQL Tutorial
+
+Start with the [JSData + SQL tutorial][12] or checkout the [API Reference Documentation][13].
+
+### Need help?
+
+Please [post a question][14] on Stack Overflow. **This is the preferred method.**
+
+You can also chat with folks on the [Slack Channel][15]. If you end up getting
+your question answered, please still consider consider posting your question to
+Stack Overflow (then possibly answering it yourself). Thanks!
+
+### Want to contribute?
+
+Awesome! You can get started over at the [Contributing guide][16].
+
+Thank you!
+
+### License
+
+[The MIT License (MIT)][17]
+
+Copyright (c) 2014-2017 [js-data-sql project authors][18]
+
+[1]: http://slack.js-data.io/badge.svg
+[2]: http://slack.js-data.io
+[3]: https://img.shields.io/npm/v/js-data-sql.svg?style=flat
+[4]: https://www.npmjs.org/package/js-data-sql
+[5]: https://img.shields.io/circleci/project/js-data/js-data-sql.svg?style=flat
+[6]: https://circleci.com/gh/js-data/js-data-sql
+[7]: https://img.shields.io/npm/dm/js-data-sql.svg?style=flat
+[8]: https://www.npmjs.org/package/js-data-sql
+[9]: https://img.shields.io/codecov/c/github/js-data/js-data-sql.svg?style=flat
+[10]: https://codecov.io/github/js-data/js-data-sql
+[11]: http://www.js-data.io/
+[12]: http://www.js-data.io/docs/js-data-sql
+[13]: http://api.js-data.io/js-data-sql
+[14]: http://stackoverflow.com/questions/tagged/jsdata
+[15]: http://slack.js-data.io/
+[16]: https://github.com/js-data/js-data-sql/blob/master/.github/CONTRIBUTING.md
+[17]: https://github.com/js-data/js-data-sql/blob/master/LICENSE
+[18]: https://github.com/js-data/js-data-sql/blob/master/AUTHORS
