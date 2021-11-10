@@ -1,3 +1,7 @@
+##### 1.0.1 - 10 November 2021
+
+Release v1
+
 ##### 1.0.1 - 18 August 2017
 
 ###### Bug fixes
