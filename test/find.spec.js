@@ -18,7 +18,7 @@ describe('SapHanaAdapter#findAll', function () {
     const id = 579941438
     const ITEM_WB_ID = 579228793
     return adapter.find(mapper, id)
-      .then(([record]) => {
+      .then((record) => {
         expect(record).to.be.an('object')
         expect(record.ITEM_WB_ID).equal(ITEM_WB_ID)
       })

@@ -203,6 +203,10 @@ describe('SapHanaAdapter#parseQuery', function () {
     expectedQuery = " ORDER BY 'name' ASC"
     assert.equal(adapter.parseQuery(query), expectedQuery)
 
+    query = { order: 'name asc, age desc' }
+    expectedQuery = " ORDER BY 'name' ASC, 'age' DESC"
+    assert.equal(adapter.parseQuery(query), expectedQuery)
+
     query = { orderBy: ['age', 'name'] }
     expectedQuery = " ORDER BY 'age' ASC, 'name' ASC"
     assert.equal(adapter.parseQuery(query), expectedQuery)
@@ -214,6 +218,12 @@ describe('SapHanaAdapter#parseQuery', function () {
       ]
     }
     expectedQuery = " ORDER BY 'age' DESC, 'name' ASC"
+    assert.equal(adapter.parseQuery(query), expectedQuery)
+
+    query = {
+      order: ['name DESC', 'age DESC']
+    }
+    expectedQuery = " ORDER BY 'name' DESC, 'age' DESC"
     assert.equal(adapter.parseQuery(query), expectedQuery)
   })
 

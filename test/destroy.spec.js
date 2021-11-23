@@ -28,7 +28,7 @@ describe('SapHanaAdapter#destroy', function () {
         expect(affectedCount).equal(1)
         return adapter.find(mapper, id)
       })
-      .then(([res]) => {
+      .then((res) => {
         expect(res).to.be.an('undefined')
       })
   })

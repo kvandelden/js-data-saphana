@@ -33,7 +33,7 @@ describe('SapHanaAdapter#update', function () {
       .then(() => {
         return adapter.find(mapper, id)
       })
-      .then(([res]) => {
+      .then((res) => {
         expect(res).to.be.an('object')
         expect(res.WB_QUEUE_ID).equal(id)
         expect(res.QUEUE_ID).equal(queueId)

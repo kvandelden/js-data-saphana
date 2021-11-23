@@ -2,8 +2,7 @@ import {utils} from 'js-data'
 import hana from '@sap/hana-client'
 
 import {
-  Adapter,
-  reserved
+  Adapter
 } from 'js-data-adapter'
 import toString from 'lodash.tostring'
 import snakeCase from 'lodash.snakecase'
@@ -41,6 +40,8 @@ export const OPERATORS = {
 
 Object.freeze(OPERATORS)
 
+const RESERVED_KEYWORD = ['order', 'orderBy', 'sort', 'limit', 'offset', 'skip', 'where']
+
 const CASE_INSENSITIVE_LIKE_OPERATORS = [
   'ILIKE',
   'LIKEI'
@@ -69,8 +70,9 @@ const CASE_INSENSITIVE_LIKE_OPERATORS = [
  * @class SapHanaAdapter
  * @extends Adapter
  * @param {Object} [opts] Configuration options.
+ * @param {Function} [opts.customGetTable] Custom function to get table name from mapper
  * @param {boolean} [opts.debug=false] See {@link Adapter#debug}
- * @param {Object} [opts.hanaOpts] See {@link SapHanaAdapter#hanaOpts}
+ * @param {Object} [opts.hanaOpts] Configuration for SAP Hana connection
  * @param {boolean} [opts.raw=false] See {@link Adapter#raw}
  */
 export function SapHanaAdapter (opts) {
@@ -119,23 +121,23 @@ SapHanaAdapter.extend = utils.extend
 Adapter.extend({
   constructor: SapHanaAdapter,
 
-  _connectHana () {
-    return new Promise((resolve, reject) => {
-      this.hanaClient.connect(this.hanaOpts, function (error) {
-        if (error) {
-          reject(error)
-        } else {
-          resolve()
-        }
-      })
-    })
+  get bConnected () {
+    return this.hanaClient.state() === 'connected'
   },
 
-  _disconnectHana () {
+  _connectHana () {
     return new Promise((resolve, reject) => {
-      this.hanaClient.disconnect((err) => {
-        if (err) throw err
-      })
+      if (this.bConnected) {
+        resolve()
+      } else {
+        this.hanaClient.connect(this.hanaOpts, function (error) {
+          if (error) {
+            reject(error)
+          } else {
+            resolve()
+          }
+        })
+      }
     })
   },
 
@@ -159,7 +161,6 @@ Adapter.extend({
           return this._executeSql(sql)
         }).then((result) => {
           resolve(result)
-          return this._disconnectHana()
         }).catch((err) => {
           reject(err)
         })
@@ -237,7 +238,6 @@ Adapter.extend({
           } else {
             resolve([props]) // return the newly created records
           }
-          return this._disconnectHana()
         })
         .catch(reject)
     })
@@ -276,7 +276,13 @@ Adapter.extend({
     const sql = `SELECT ${table}.*` +
       ` FROM ${table}` +
       ` WHERE ${table}."${idAttribute}" = ${toString(id)}`
-    return this._execute(sql)
+    return new Promise((resolve, reject) => {
+      this._execute(sql)
+        .then((result) => {
+          resolve(result[0])
+        })
+        .catch(reject)
+    })
   },
 
   _findAll (mapper, query, opts) {
@@ -354,13 +360,15 @@ Adapter.extend({
           } else {
             resolve([res.length])
           }
-          return this._disconnectHana()
         })
         .catch(reject)
     })
   },
 
   getTable (mapper) {
+    if (this.customGetTable) {
+      return this.customGetTable.call(null, mapper)
+    }
     return `"${mapper.table || snakeCase(mapper.name)}"`
   },
 
@@ -404,6 +412,7 @@ Adapter.extend({
    * @param {Object} query
    * @property {number} [limit] See {@link query.limit}
    * @property {number} [offset] See {@link query.offset}
+   * @property {string|Array[]} [order] See {@link query.orderBy}
    * @property {string|Array[]} [orderBy] See {@link query.orderBy}
    * @property {number} [skip] Alias for {@link query.offset}
    * @property {string|Array[]} [sort] Alias for {@link query.orderBy}
@@ -423,7 +432,7 @@ Adapter.extend({
     let offsetClause = ''
 
     /**
-     * Generate WHERE clause based on query.where, and attributes whose key is not in the 'reserved' array.
+     * Generate WHERE clause based on query.where, and attributes whose key is not in the 'RESERVED_KEYWORD' array.
      * @name query.where
      * @type {Object}
      */
@@ -434,7 +443,7 @@ Adapter.extend({
       // Gather WHERE conditions outside the query.where.
       let whereObj = {}
       for (const [key, value] of Object.entries(query)) {
-        if (reserved.indexOf(key) === -1 && !(key in whereObj)) {
+        if (RESERVED_KEYWORD.indexOf(key) === -1 && !(key in whereObj)) {
           whereObj[key] = value
         }
       }
@@ -462,13 +471,11 @@ Adapter.extend({
      * @example <caption>Sort by age in ascending order</caption>
      * orderBy: 'age' => ORDER BY 'age' ASC
      *
-     * @example <caption>Sort by age and then name in ascending order</caption>
-     * orderBy: ['age', 'name'] => ORDER BY 'age', 'name'
+     * @example
+     * order: 'name asc, age desc' => ORDER BY 'name' ASC, 'age' DESC
      *
-     * @example <caption>Sort by age in descending order</caption>
-     * orderBy: [
-     *   ['age', 'DESC]
-     * ] => ORDER BY 'age' DESC
+     * @example <caption>Sort by age and then name in ascending order</caption>
+     * orderBy: ['age', 'name asc'] => ORDER BY 'age' ASC, 'name' ASC
      *
      * @example <caption>Sort by age in descending order and then name in ascending order to break a tie</caption>
      * orderBy: [
@@ -476,12 +483,10 @@ Adapter.extend({
      *   ['name', 'ASC'],
      * ] => ORDER BY 'age' DESC, 'name' ASC
      */
-    let orderBy = query.orderBy || query.sort
+    let orderBy = query.order || query.orderBy || query.sort
 
     if (utils.isString(orderBy)) {
-      orderBy = [
-        [orderBy, 'ASC']
-      ]
+      orderBy = orderBy.split(',').map(s => s.trim())
     }
     if (!utils.isArray(orderBy)) {
       orderBy = null
@@ -489,9 +494,10 @@ Adapter.extend({
 
     if (orderBy && orderBy.length > 0) {
       orderBy.forEach((def, index) => {
-        // In case of orderBy = ['age', 'name']
+        // In case of orderBy = ['age', 'name asc']
         if (utils.isString(def)) {
-          orderBy[index] = [def, 'ASC']
+          const [column, order] = def.split(' ')
+          orderBy[index] = [column, order ? order : 'ASC']
         }
         // In case of orderBy = [['age']]
         if (utils.isArray(def) && def.length === 1) {

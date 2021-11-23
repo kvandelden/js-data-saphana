@@ -25,7 +25,7 @@ describe('SapHanaAdapter#create', function () {
         expect(res).to.deep.equal(newRecord)
         return adapter.find(mapper, id)
       })
-      .then(([res]) => {
+      .then((res) => {
         expect(res).to.be.an('object')
         expect(res.WB_QUEUE_ID).equal(id)
         return adapter.destroy(mapper, id)
