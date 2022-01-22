@@ -1,7 +1,7 @@
 {
   "name": "js-data-saphana",
   "description": "SAP Hana adapter for js-data.",
-  "version": "1.0.5",
+  "version": "1.0.7",
   "homepage": "https://github.com/kvandelden/js-data-saphana.git",
   "repository": {
     "type": "git",
@@ -50,12 +50,14 @@
   },
   "dependencies": {
     "@sap/hana-client": ">=2.5.109",
+    "hdb-pool": "^0.1.6",
     "js-data": ">=3.0.0",
     "js-data-adapter": "1.0.0",
     "lodash.snakecase": "4.1.1",
     "lodash.tostring": "4.1.4"
   },
   "peerDependencies": {
+    "hdb-pool": ">=0.1.6",
     "js-data": ">=3.0.0",
     "@sap/hana-client": ">=2.5.109"
   },

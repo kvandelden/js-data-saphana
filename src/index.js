@@ -1,5 +1,5 @@
 import {utils} from 'js-data'
-import hana from '@sap/hana-client'
+import * as hdbPool from "hdb-pool"
 
 import {
   Adapter
@@ -8,6 +8,11 @@ import toString from 'lodash.tostring'
 import snakeCase from 'lodash.snakecase'
 
 const DEFAULTS = {}
+
+const DEFAULT_POOL_OPTIONS = {
+  max: 50,
+  requestTimeout: 30000
+}
 
 const KEYWORD_AND = 'AND'
 const KEYWORD_OR = 'OR'
@@ -73,26 +78,48 @@ const CASE_INSENSITIVE_LIKE_OPERATORS = [
  * @param {Function} [opts.customGetTable] Custom function to get table name from mapper
  * @param {boolean} [opts.debug=false] See {@link Adapter#debug}
  * @param {Object} [opts.hanaOpts] Configuration for SAP Hana connection
+ * @param {Object} [opts.poolOpts] Configuration for connection pool
  * @param {boolean} [opts.raw=false] See {@link Adapter#raw}
  */
 export function SapHanaAdapter (opts) {
   utils.classCallCheck(this, SapHanaAdapter)
   opts || (opts = {})
   opts.hanaOpts || (opts.hanaOpts = {})
+  opts.poolOpts || (opts.poolOpts = {})
+  utils.fillIn(opts.poolOpts, DEFAULT_POOL_OPTIONS)
   utils.fillIn(opts, DEFAULTS)
 
-  Object.defineProperty(this, 'hanaClient', {
+  // extract connection settings
+  const hanaOpts = opts.hanaOpts
+  const hostName = hanaOpts.hostName || hanaOpts.host
+  const port = hanaOpts.port
+  const userName = hanaOpts.userName || hanaOpts.uid
+  const password = hanaOpts.password || hanaOpts.pwd
+  const dbParams = {
+    hostName,
+    port,
+    userName,
+    password
+  }
+
+  const hashKey = `${hostName}:${port}:${userName}`
+  Object.defineProperty(this, 'connectionHash', {
     writable: true,
-    value: undefined
+    value: hashKey
   })
+  if (!SapHanaAdapter.dctConnectionPool.hasOwnProperty(hashKey)) {
+    SapHanaAdapter.dctConnectionPool[hashKey] = hdbPool.createPool(dbParams, opts.poolOpts)
+  }
 
   Adapter.call(this, opts)
-
-  /**
-   * Create Hana connection.
-   */
-  this.hanaClient || (this.hanaClient = hana.createConnection())
 }
+
+// Store the connection pools in a class-level dictionary
+// so that multiple instances can share one if they have the same connection settings
+Object.defineProperty(SapHanaAdapter, 'dctConnectionPool', {
+  writable: true,
+  value: {}
+})
 
 /**
  * Alternative to ES2015 class syntax for extending `SapHanaAdapter`.
@@ -121,29 +148,32 @@ SapHanaAdapter.extend = utils.extend
 Adapter.extend({
   constructor: SapHanaAdapter,
 
-  get bConnected () {
-    return this.hanaClient.state() === 'connected'
+  _getPool () {
+    return SapHanaAdapter.dctConnectionPool[this.connectionHash]
   },
 
-  _connectHana () {
+  _getConnection () {
+    const pool = this._getPool()
     return new Promise((resolve, reject) => {
-      if (this.bConnected) {
-        resolve()
-      } else {
-        this.hanaClient.connect(this.hanaOpts, function (error) {
-          if (error) {
-            reject(error)
-          } else {
-            resolve()
-          }
+      pool.getConnection()
+        .then((connection) => {
+          resolve(connection)
         })
-      }
+        .catch(reject)
     })
   },
 
-  _executeSql (sql) {
+  _releaseConnection (connection) {
+    const pool = this._getPool()
     return new Promise((resolve, reject) => {
-      this.hanaClient.exec(sql, (error, result) => {
+      pool.release(connection)
+        .catch(reject)
+    })
+  },
+
+  _executeSql (connection, sql) {
+    return new Promise((resolve, reject) => {
+      connection.exec(sql, (error, result) => {
         if (error) {
           reject(error)
         } else {
@@ -156,11 +186,14 @@ Adapter.extend({
 
   _execute (sql) {
     return new Promise((resolve, reject) => {
-      this._connectHana()
-        .then(() => {
-          return this._executeSql(sql)
+      let connection = null
+      this._getConnection()
+        .then((conn) => {
+          connection = conn
+          return this._executeSql(conn, sql)
         }).then((result) => {
           resolve(result)
+          return this._releaseConnection(connection)
         }).catch((err) => {
           reject(err)
         })
@@ -226,12 +259,15 @@ Adapter.extend({
       return `INSERT INTO ${table} (${columns.join(', ')}) VALUES (${prepValueStr})`
     })
 
+    const sqlTasks = sqlList.map(sql => {
+      return new Promise((resolve, reject) => {
+        this._execute(sql)
+          .then(resolve)
+          .catch(reject)
+      })
+    })
     return new Promise((resolve, reject) => {
-      this._connectHana()
-        .then(() => {
-          const tasks = sqlList.map(sql => this._executeSql(sql))
-          return Promise.all(tasks)
-        })
+      Promise.all(sqlTasks)
         .then((res) => {
           if (!res || res.some(([affectedCount]) => affectedCount === 0)) {
             throw new Error(`Creation failed. SQL: ${sqlList.join('\n')}`)
@@ -348,12 +384,15 @@ Adapter.extend({
         ` WHERE "${idAttribute}" = ${toString(id)}`
     })
 
+    const sqlTasks = sqlList.map(sql => {
+      return new Promise((resolve, reject) => {
+        this._execute(sql)
+          .then(resolve)
+          .catch(reject)
+      })
+    })
     return new Promise((resolve, reject) => {
-      this._connectHana()
-        .then(() => {
-          const tasks = sqlList.map(sql => this._executeSql(sql))
-          return Promise.all(tasks)
-        })
+      Promise.all(sqlTasks)
         .then((res) => {
           if (!res || res.some(([affectedCount]) => affectedCount === 0)) {
             throw new Error(`Update failed. SQL: ${sqlList.join('\n')}`)
