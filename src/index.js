@@ -5,7 +5,6 @@ import {
   Adapter
 } from 'js-data-adapter'
 import toString from 'lodash.tostring'
-import snakeCase from 'lodash.snakecase'
 
 const DEFAULTS = {}
 
@@ -75,7 +74,6 @@ const CASE_INSENSITIVE_LIKE_OPERATORS = [
  * @class SapHanaAdapter
  * @extends Adapter
  * @param {Object} [opts] Configuration options.
- * @param {Function} [opts.customGetTable] Custom function to get table name from mapper
  * @param {boolean} [opts.debug=false] See {@link Adapter#debug}
  * @param {Object} [opts.hanaOpts] Configuration for SAP Hana connection
  * @param {Object} [opts.poolOpts] Configuration for connection pool
@@ -405,10 +403,7 @@ Adapter.extend({
   },
 
   getTable (mapper) {
-    if (this.customGetTable) {
-      return this.customGetTable.call(null, mapper)
-    }
-    return `"${mapper.table || snakeCase(mapper.name)}"`
+    return `"${mapper.schema.options.hdb.table}"`;
   },
 
   /**

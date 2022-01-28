@@ -51,6 +51,11 @@ export function initTest (options) {
     description: 'Schema for Jobs records', // optional
     type: 'object',
     track: true,
+    options: {
+      hdb: {
+        table: "/AZR/WB_QUEUE"
+      }
+    },
     properties: {
       WB_QUEUE_ID: { type: 'number' },
       QUEUE_ID: { type: 'string' },

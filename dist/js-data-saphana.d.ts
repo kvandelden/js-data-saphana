@@ -10,7 +10,6 @@ interface IBaseAdapter extends IDict {
 interface IBaseSapHanaAdapter extends IBaseAdapter {
     hanaOpts?: IDict
     poolOpts?: IDict
-    customGetTable?: Function
 }
 export class SapHanaAdapter extends Adapter {
     static extend(instanceProps?: IDict, classProps?: IDict): typeof SapHanaAdapter
