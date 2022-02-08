@@ -51,6 +51,10 @@ const CASE_INSENSITIVE_LIKE_OPERATORS = [
   'LIKEI'
 ]
 
+const CHECK_ARRAY_LENGTH_IN_OPERATORS = ['IN', 'INQ', 'NOTIN', 'NIN']
+
+const UNATTAINABLE_CONDITION = '1 = 0'
+
   /**
  * Sap Hana Adapter class
  *
@@ -661,6 +665,10 @@ Adapter.extend({
       }
       return clauses
     } else {
+      // In case of "** in ()" or "** not in ()", return an unattainable condition
+      if (valueArr.length === 0 && CHECK_ARRAY_LENGTH_IN_OPERATORS.includes(upperCaseOp)) {
+        return UNATTAINABLE_CONDITION
+      }
       const value = valueArr.map(this._parseValue).join(', ')
       return this._parseCondition(field, op, `(${value})`)
     }
