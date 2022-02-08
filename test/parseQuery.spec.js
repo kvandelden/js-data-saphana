@@ -192,6 +192,28 @@ describe('SapHanaAdapter#parseQuery', function () {
     assert.deepEqual(adapter.parseQuery(query), expectedQuery)
   })
 
+  it('should return unattainable condition when "(NOT) IN" array is empty', function () {
+    query = {
+      where: {
+        aId: { in: [] },
+        bId: { in: [3, 4] }
+      }
+    }
+    expectedQuery = " WHERE 1 = 0" +
+      ' AND bId IN (3, 4)'
+    assert.deepEqual(adapter.parseQuery(query), expectedQuery)
+
+    query = {
+      where: {
+        aId: { in: ['1', '2'] },
+        bId: { nin: [] }
+      }
+    }
+    expectedQuery = " WHERE aId IN ('1', '2')" +
+      ' AND 1 = 0'
+    assert.deepEqual(adapter.parseQuery(query), expectedQuery)
+  })
+
   it('should create a LIMIT clause from query', function () {
     query = { limit: 3 }
     expectedQuery = ' LIMIT 3'
