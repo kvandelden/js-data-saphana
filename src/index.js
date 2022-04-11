@@ -545,7 +545,7 @@ Adapter.extend({
 
       // combine to an order by clause
       orderByClause = ' ORDER BY ' + orderBy.map(([column, order]) => {
-        return `'${column}' ${order.toUpperCase()}`
+        return `${column} ${order.toUpperCase()}`
       }).join(', ')
     }
 
