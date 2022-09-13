@@ -24,6 +24,13 @@ describe('SapHanaAdapter#findAll', function () {
       })
   })
 
+  it('should return undefined when id is undefined', function () {
+    return adapter.find(mapper, undefined)
+      .then((record) => {
+        expect(record).to.be.undefined
+      })
+  })
+
   it('should find all records filtered by a query', function () {
     const query = {
       where: {

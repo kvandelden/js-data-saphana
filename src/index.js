@@ -177,6 +177,7 @@ Adapter.extend({
     return new Promise((resolve, reject) => {
       connection.exec(sql, (error, result) => {
         if (error) {
+          console.log(sql)
           reject(error)
         } else {
           // Wrap the result in an array before js-data-adapter takes over.
@@ -311,9 +312,11 @@ Adapter.extend({
 
     const table = this.getTable(mapper)
     const { idAttribute } = mapper
+    const where = utils.isUndefined(id) ? UNATTAINABLE_CONDITION : `${table}."${idAttribute}" = ${toString(id)}`
     const sql = `SELECT ${table}.*` +
       ` FROM ${table}` +
-      ` WHERE ${table}."${idAttribute}" = ${toString(id)}`
+      ` WHERE ` +
+      where
     return new Promise((resolve, reject) => {
       this._execute(sql)
         .then((result) => {
