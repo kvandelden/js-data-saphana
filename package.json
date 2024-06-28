@@ -1,7 +1,7 @@
 {
   "name": "js-data-saphana",
   "description": "SAP Hana adapter for js-data.",
-  "version": "1.0.11",
+  "version": "1.0.12",
   "homepage": "https://github.com/kvandelden/js-data-saphana.git",
   "repository": {
     "type": "git",

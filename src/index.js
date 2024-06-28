@@ -606,10 +606,32 @@ Adapter.extend({
    * @return {string}
    */
   _parseValue (value) {
-    if (utils.isString(value)) {
-      return "'" + value + "'"
+    if (!utils.isString(value)) {
+      return value
     }
-    return value
+    value = value.replace(/[\0\n\r\b\t\'\"\x1a]/g, function (s) {
+      switch (s) {
+        case "\0":
+          return "\\0"
+        case "\n":
+          return "' || char(13) || '"
+        case "\r":
+          return "' || char(10) || '"
+        case "\b":
+          return "\\b"
+        case "\t":
+          return "\\t"
+        case "\x1a":
+          return "\\Z"
+        case "\'":
+          return "''" // For hdb
+        case "\"":
+          return s // For hdb
+        default:
+          return "\\" + s
+      }
+    })
+    return "'" + value + "'"
   },
 
   /**
